@@ -7,7 +7,6 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
 import { sendEmail } from "../../utils/email.js";
-import "dotenv/config";
 
 const saltRounds = 10;
 

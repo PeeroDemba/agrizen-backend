@@ -7,6 +7,9 @@ import helmet from "helmet";
 import cors from "cors";
 import sequelize from "./database/models/index.js";
 import AuthenticationRouter from "./modules/authentication/authentication.routes.js";
+import LoanRouter from "./modules/loan/loan.routes.js";
+import ProfileRouter from "./modules/profile/profile.routes.js";
+import NotificationRouter from "./modules/notification/notification.routes.js";
 import errorHandler from "./utils/errorHandler.js";
 
 const app = express();
@@ -16,10 +19,13 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (_, response: Response) => {
-  return response.send("Server Running");
+  return response.send("Agrizen Server Running");
 });
 
-app.use("/api", AuthenticationRouter);
+app.use("/api/auth", AuthenticationRouter);
+app.use("/api/loan", LoanRouter);
+app.use("/api/profile", ProfileRouter);
+app.use("/api/notification", NotificationRouter);
 
 app.use(errorHandler());
 

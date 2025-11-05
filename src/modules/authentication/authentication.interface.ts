@@ -7,6 +7,8 @@ export interface UserInterface {
   password: string;
   state: string;
   nationalId: number;
+  resetToken?: string | null;
+  resetTokenExpiredAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   deletedAt?: Date;

@@ -4,36 +4,80 @@ import type { UserInterface } from "./authentication.interface.js";
 import * as bcrypt from "bcrypt";
 import sequelize from "../../database/models/index.js";
 import { ErrorConstructor } from "../../utils/errors.js";
+import Notification from "../../database/models/notification.js";
+import * as uuid from "uuid";
 
 const saltRounds = 10;
 
 export class UserRepository {
   static async createUser(payload: UserInterface) {
-    return await User.create(payload);
+    const transaction = await sequelize.transaction();
+    try {
+      const user = await User.create(payload, { transaction });
+
+      await Notification.create(
+        {
+          id: uuid.v4(),
+          notificationType: "Account Creation",
+          createdAt: new Date(),
+          readAt: null,
+          userId: user.id,
+        },
+        { transaction, returning: false }
+      );
+
+      await transaction.commit();
+
+      return user;
+    } catch (e) {
+      await transaction.rollback();
+      throw e;
+    }
   }
 
   static async loginUser(payload: { emailOrPhone: string; password: string }) {
-    const user = await User.findOne({
-      where: {
-        [Op.or]: [
-          { email: payload.emailOrPhone },
-          { phone: payload.emailOrPhone },
-        ],
-      },
-      attributes: {
-        exclude: ["nationalId", "resetToken", "resetTokenExpiredAt"],
-      },
-      raw: true,
-    });
+    const transaction = await sequelize.transaction();
+    try {
+      const user = await User.findOne({
+        where: {
+          [Op.or]: [
+            { email: payload.emailOrPhone },
+            { phone: payload.emailOrPhone },
+          ],
+        },
+        attributes: {
+          exclude: ["nationalId", "resetToken", "resetTokenExpiredAt"],
+        },
+        raw: true,
+        transaction,
+      });
 
-    if (user) {
-      if (bcrypt.compareSync(payload.password, user.password)) {
-        return user;
+      if (user) {
+        if (bcrypt.compareSync(payload.password, user.password)) {
+          await Notification.create(
+            {
+              id: uuid.v4(),
+              notificationType: "Sign In",
+              createdAt: new Date(),
+              readAt: null,
+              userId: user.id,
+            },
+            { transaction }
+          );
+
+          await transaction.commit();
+          return user;
+        } else {
+          await transaction.commit();
+          return null;
+        }
       } else {
+        await transaction.commit();
         return null;
       }
-    } else {
-      return null;
+    } catch (e) {
+      await transaction.rollback();
+      throw e;
     }
   }
 
@@ -74,6 +118,7 @@ export class UserRepository {
       }
     } catch (e) {
       await transaction.rollback();
+      throw e;
     }
   }
 
@@ -116,6 +161,17 @@ export class UserRepository {
               transaction,
             }
           );
+
+          await Notification.create(
+            {
+              id: uuid.v4(),
+              notificationType: "Password Changed",
+              createdAt: new Date(),
+              readAt: null,
+              userId: user.id,
+            },
+            { transaction }
+          );
         } else {
           throw new ErrorConstructor("Invalid token", 401);
         }
@@ -124,6 +180,7 @@ export class UserRepository {
       }
     } catch (e) {
       await transaction.rollback();
+      throw e;
     }
   }
 }

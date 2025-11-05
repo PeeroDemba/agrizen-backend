@@ -18,6 +18,19 @@ export class UserController {
     } catch (e: any) {
       if (e.code) {
         next(e);
+      } else if (e.errors) {
+        next(
+          new ErrorConstructor(
+            "The requested operation could not be completed due to a data conflict. Please review the data and try again.",
+            409,
+            JSON.stringify(
+              Object.values(e.errors).map((e: any) => ({
+                path: e.path,
+                message: e.message,
+              }))
+            )
+          )
+        );
       } else {
         next(
           new ErrorConstructor(
