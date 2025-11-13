@@ -7,6 +7,7 @@ import {
   type InferCreationAttributes,
 } from "sequelize";
 import sequelize from "./index.js";
+import Loan from "./loan.js";
 
 class User extends Model<InferAttributes<User>, InferCreationAttributes<User>> {
   declare id: string;
@@ -87,5 +88,8 @@ User.init(
     paranoid: true,
   }
 );
+
+User.hasMany(Loan, { foreignKey: "farmerId", sourceKey: "id", as: "loans" });
+Loan.belongsTo(User, { foreignKey: "farmerId", targetKey: "id", as: "user" });
 
 export default User;

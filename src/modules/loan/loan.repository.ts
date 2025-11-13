@@ -1,6 +1,7 @@
 import sequelize from "../../database/models/index.js";
 import Loan from "../../database/models/loan.js";
 import Notification from "../../database/models/notification.js";
+import User from "../../database/models/user.js";
 import type { LoanInterface } from "./loan.interface.js";
 import * as uuid from "uuid";
 
@@ -31,22 +32,59 @@ export class LoanRepository {
     }
   }
 
-  static async getLoans(query: {
-    filter?: "pending" | "approved" | "rejected";
-    page?: number;
-    perPage?: number;
-  }) {
+  static async getLoans(
+    query: {
+      filter?: "pending" | "approved" | "rejected";
+      farmerId?: string;
+      page?: number;
+      perPage?: number;
+    },
+    farmerId?: string
+  ) {
     return await Loan.findAndCountAll({
       where: {
         ...(query.filter ? { status: query.filter } : false),
+        ...(query.farmerId ? { farmerId: query.farmerId } : false),
+        ...(farmerId ? { farmerId } : false),
       },
+      include: [
+        {
+          model: User,
+          as: "user",
+          required: true,
+          attributes: {
+            exclude: [
+              "password",
+              "resetToken",
+              "resetTokenExpiredAt",
+              "deletedAt",
+            ],
+          },
+        },
+      ],
       limit: query.perPage ?? 10,
       offset: query.page ? (query.page - 1) * (query.perPage ?? 10) : 0,
     });
   }
 
   static async getLoan(id: string) {
-    return await Loan.findByPk(id);
+    return await Loan.findByPk(id, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          required: true,
+          attributes: {
+            exclude: [
+              "password",
+              "resetToken",
+              "resetTokenExpiredAt",
+              "deletedAt",
+            ],
+          },
+        },
+      ],
+    });
   }
 
   static async deleteLoan(id: string) {
@@ -127,5 +165,41 @@ export class LoanRepository {
       await transaction.rollback();
       throw e;
     }
+  }
+
+  static async loanMetric(farmerId: string) {
+    return await Loan.findAll({
+      where: {
+        farmerId,
+      },
+      group: ["farmerId", "status"],
+      attributes: [
+        "status",
+        [sequelize.fn("SUM", sequelize.col("amount")), "totalLoanAmount"],
+        [sequelize.fn("COUNT", sequelize.col("status")), "totalLoanCount"],
+      ],
+    });
+  }
+
+  static async loanMetrics(query: { page?: number; perPage?: number }) {
+    return await User.findAndCountAll({
+      where: {
+        role: "farmer",
+      },
+      attributes: {
+        exclude: ["password", "resetToken", "resetTokenExpiredAt", "deletedAt"],
+      },
+      include: [
+        {
+          model: Loan,
+          as: "loans",
+          required: false,
+          attributes: ["status", "amount"],
+        },
+      ],
+      distinct: true,
+      limit: query.perPage ?? 10,
+      offset: query.page ? (query.page - 1) * (query.perPage ?? 10) : 0,
+    });
   }
 }

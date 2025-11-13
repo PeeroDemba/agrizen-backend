@@ -8,6 +8,12 @@ router.post("/", authMiddleware, LoanController.createLoan);
 
 router.get("/", authMiddleware, LoanController.getLoans);
 
+router.get("/metric", authMiddleware, LoanController.loanMetric);
+
+router.get("/metrics", authMiddleware, LoanController.loanMetrics);
+
+router.get("/metrics/:id", authMiddleware, LoanController.loanMetric);
+
 router.get("/:id", authMiddleware, LoanController.getLoan);
 
 router.delete("/:id", authMiddleware, LoanController.deleteLoan);

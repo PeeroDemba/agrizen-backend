@@ -35,12 +35,21 @@ export class LoanService {
     }
   }
 
-  static async getLoans(query: {
-    filter?: "pending" | "approved" | "rejected";
-    page?: number;
-    perPage?: number;
-  }) {
-    return await LoanRepository.getLoans(query);
+  static async getLoans(
+    user: { id: string; role: "admin" | "farmer" },
+    query: {
+      filter?: "pending" | "approved" | "rejected";
+      farmerId?: string;
+      page?: number;
+      perPage?: number;
+    }
+  ) {
+    if (user.role === "admin") {
+      return await LoanRepository.getLoans(query);
+    } else {
+      delete query.farmerId;
+      return await LoanRepository.getLoans(query, user.id);
+    }
   }
 
   static async getLoan(id: string) {
@@ -81,6 +90,48 @@ export class LoanService {
   ) {
     if (user.role === "admin") {
       return await LoanRepository.rejectLoan(id);
+    } else {
+      throw new ErrorConstructor(
+        "Access denied. Your role does not permit this action.",
+        403
+      );
+    }
+  }
+
+  static async loanMetric(
+    user: { id: string; role: "admin" | "farmer" },
+    farmerId?: string
+  ) {
+    if (user.role === "admin") {
+      if (farmerId) {
+        return await LoanRepository.loanMetric(farmerId);
+      } else {
+        throw new ErrorConstructor(
+          "Access denied. Your role does not permit this action.",
+          403
+        );
+      }
+    } else if (user.role === "farmer") {
+      if (!farmerId) {
+        return await LoanRepository.loanMetric(user.id);
+      } else {
+        throw new ErrorConstructor(
+          "Access denied. Your role does not permit this action.",
+          403
+        );
+      }
+    }
+  }
+
+  static async loanMetrics(
+    user: { id: string; role: "admin" | "farmer" },
+    query: {
+      page?: number;
+      perPage?: number;
+    }
+  ) {
+    if (user.role === "admin") {
+      return await LoanRepository.loanMetrics(query);
     } else {
       throw new ErrorConstructor(
         "Access denied. Your role does not permit this action.",
